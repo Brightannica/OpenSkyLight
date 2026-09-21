@@ -32,7 +32,7 @@ export function createWeatherService(settings: SettingsService) {
   let cache: { key: string; data: WeatherDto; atMs: number } | null = null
 
   async function get(): Promise<WeatherDto | null> {
-    const s = settings.getAll()
+    const s = await settings.getAll()
     if (!s.weather) return null
     const unit = s.temperatureUnit
     const key = `${s.weather.lat},${s.weather.lon},${unit}`

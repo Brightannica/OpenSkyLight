@@ -25,6 +25,7 @@ import type { RssService } from '../services/rssService'
 import type { CameraService } from '../services/cameraService'
 import type { BirdNetService } from '../services/birdnetService'
 import type { CompanionServer } from '../companion/companionServer'
+import { notifySseClients } from '../web/sse'
 
 export interface Services {
   settings: SettingsService
@@ -114,9 +115,14 @@ const MUTATION_DOMAINS: Partial<Record<IpcChannel, MutationDomain>> = {
 }
 
 export function broadcast(channel: string, payload: unknown): void {
-  for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(channel, payload)
-  }
+  try {
+    if (typeof BrowserWindow !== 'undefined' && BrowserWindow?.getAllWindows) {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send(channel, payload)
+      }
+    }
+  } catch {}
+  notifySseClients(channel, payload)
 }
 
 interface ChannelEntry {
@@ -160,9 +166,13 @@ export async function dispatch<K extends IpcChannel>(
 }
 
 export function registerIpcHandlers(services: Services, table: ChannelTable): void {
-  for (const channel of table.keys()) {
-    ipcMain.handle(channel, (_event, payload) => dispatch(services, table, channel, payload, { gate: 'pin' }))
-  }
+  try {
+    if (typeof ipcMain !== 'undefined' && ipcMain?.handle) {
+      for (const channel of table.keys()) {
+        ipcMain.handle(channel, (_event, payload) => dispatch(services, table, channel, payload, { gate: 'pin' }))
+      }
+    }
+  } catch {}
 }
 
 /** The single channel → {schema, handler} map consumed by ipcMain AND the companion HTTP API. */
@@ -177,7 +187,7 @@ export function buildChannelTable(services: Services): ChannelTable {
   }
 
   handle('app:getInfo', null, () => ({
-    version: app.getVersion(),
+    version: typeof app === 'object' && app?.getVersion ? app.getVersion() : '0.8.0',
     platform: process.platform,
     zone: DateTime.local().zoneName ?? 'UTC'
   }))

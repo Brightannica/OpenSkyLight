@@ -11,6 +11,8 @@
     "dev:windowed": "electron-vite dev -- --windowed",
     "dev:companion": "vite --config companion.vite.config.ts",
     "build": "electron-vite build && npm run build:companion",
+    "build:web": "vite build --config vite.config.web.ts && vite build --config server.vite.config.ts",
+    "start:web": "START_WEB_SERVER=1 node dist/server/server.js",
     "build:companion": "vite build --config companion.vite.config.ts",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
@@ -22,6 +24,7 @@
   },
   "dependencies": {
     "@googleapis/calendar": "^15.0.0",
+    "@libsql/client": "^0.18.0",
     "better-sqlite3": "^12.4.1",
     "drizzle-orm": "^0.38.4",
     "electron-updater": "^6.8.9",
@@ -31,6 +34,7 @@
     "ical.js": "^2.2.1",
     "luxon": "^3.5.0",
     "mpegts.js": "^1.8.0",
+    "postgres": "^3.4.9",
     "rrule": "^2.8.1",
     "ws": "^8.21.0",
     "zod": "^3.24.1"

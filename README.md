@@ -32,6 +32,43 @@ The phone companion app (pair by QR, served by the display itself — no cloud):
 Every screenshot is generated from a clean install by `node scripts/shot-readme.mjs`,
 which seeds demo data through the app's real IPC layer — so they stay honest.
 
+## Web Hosting Deployment (Vercel / Render / Cloudflare Pages)
+
+OpenSkyLight can be built and deployed as a web web-app on cloud hosting platforms such as **Vercel**, **Render**, or **Cloudflare Pages**.
+
+### Environment Variables
+
+Environment variables are configured on your hosting provider or in a `.env` file:
+
+| Variable | Description | Example / Value |
+| --- | --- | --- |
+| `DATABASE_URL` | Connection URL for external database (Supabase PostgreSQL, Turso / LibSQL, or SQLite file) | `postgresql://postgres:pass@db.ref.supabase.co:5432/postgres` or `libsql://your-db.turso.io` or `file:openskylight.db` |
+| `LIBSQL_AUTH_TOKEN` | Auth token for Turso / LibSQL (if using Turso) | `eyJ...` |
+| `PORT` | Port for web HTTP server (Render / Node.js) | `3000` |
+
+### Deploying to Vercel
+1. Import your repository into **Vercel**.
+2. Vercel automatically detects `vercel.json` and uses:
+   - **Build Command:** `npm run build:web`
+   - **Output Directory:** `dist/web`
+3. In **Settings → Environment Variables**, add `DATABASE_URL` (pointing to your Supabase PostgreSQL or Turso database).
+
+### Deploying to Render
+1. Create a new **Web Service** on Render and connect your repository.
+2. Select **Node** environment with:
+   - **Build Command:** `npm run build:web`
+   - **Start Command:** `npm run start:web`
+3. In Environment Variables, set `DATABASE_URL` (Supabase, Turso, or persistent disk SQLite).
+
+### Deploying to Cloudflare Pages
+1. Connect your repo to **Cloudflare Pages**.
+2. Set Build configuration:
+   - **Build Command:** `npm run build:web`
+   - **Build output directory:** `dist/web`
+3. Set environment variable `DATABASE_URL` for your external database.
+
+---
+
 ## Status
 
 **All planned milestones (M0 – M6) complete**, plus auto-update and a customizable home screen:
@@ -168,6 +205,8 @@ npm install        # also rebuilds better-sqlite3 for Electron
 npm run dev        # windowed dev mode with hot reload
 npm run dev -- --kiosk   # fullscreen kiosk in dev
 npm run dev:companion    # companion web app with hot reload (proxies /api to a running kiosk)
+npm run build:web  # builds web app frontend (dist/web) and web server (dist/server)
+npm run start:web  # starts the standalone Node.js web server
 npm test           # unit tests (run inside Electron's Node for the native module)
 npm run typecheck
 node scripts/e2e-smoke.mjs   # launches the built app and creates an event end-to-end
@@ -180,9 +219,9 @@ Data lives in SQLite at `%APPDATA%/openskylight/openskylight.db`.
 ## Architecture
 
 - **Electron + React 19 + TypeScript**, bundled with electron-vite
-- **SQLite (better-sqlite3 + Drizzle)** in the main process is the single source of truth
-- Renderer is fully sandboxed; all access goes through a **typed IPC contract**
-  (`src/shared/ipc/contract.ts`) with zod validation at the main-process boundary
+- **SQLite / Postgres / LibSQL + Drizzle** in the backend is the single source of truth
+- Renderer is fully sandboxed; all access goes through a **typed IPC / HTTP contract**
+  (`src/shared/ipc/contract.ts`) with zod validation at the boundary
 - Recurrence is stored as RRULE masters + exception rows and expanded at query
   time in `src/shared/recurrence/expand.ts` (rrule + Luxon, DST-safe, heavily unit-tested)
-- State: TanStack Query over IPC + Zustand for view state
+- State: TanStack Query over IPC/HTTP + Zustand for view state

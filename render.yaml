@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: openskylight
+    env: node
+    buildCommand: npm run build:web
+    startCommand: npm run start:web
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
