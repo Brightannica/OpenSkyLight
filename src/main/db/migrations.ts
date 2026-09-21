@@ -1,4 +1,5 @@
 import type DatabaseType from 'better-sqlite3'
+import type { Client as LibsqlClient } from '@libsql/client'
 
 /**
  * Hand-rolled migrations driven by PRAGMA user_version so the SQL ships inside the
@@ -8,7 +9,7 @@ import type DatabaseType from 'better-sqlite3'
 const MIGRATIONS: string[] = [
   // 001 — initial schema
   `
-  CREATE TABLE people (
+  CREATE TABLE IF NOT EXISTS people (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     color TEXT NOT NULL,
@@ -19,7 +20,7 @@ const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
 
-  CREATE TABLE google_accounts (
+  CREATE TABLE IF NOT EXISTS google_accounts (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
     refresh_token_enc BLOB,
@@ -28,7 +29,7 @@ const MIGRATIONS: string[] = [
     last_refresh_error TEXT
   );
 
-  CREATE TABLE calendars (
+  CREATE TABLE IF NOT EXISTS calendars (
     id TEXT PRIMARY KEY,
     provider TEXT NOT NULL DEFAULT 'local',
     google_account_id TEXT REFERENCES google_accounts(id),
@@ -46,7 +47,7 @@ const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
 
-  CREATE TABLE events (
+  CREATE TABLE IF NOT EXISTS events (
     id TEXT PRIMARY KEY,
     calendar_id TEXT NOT NULL REFERENCES calendars(id),
     provider_event_id TEXT,
@@ -71,17 +72,17 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL,
     remote_updated_at TEXT
   );
-  CREATE INDEX idx_events_calendar_start ON events(calendar_id, start_at);
-  CREATE INDEX idx_events_provider ON events(provider_event_id);
-  CREATE INDEX idx_events_master ON events(recurring_event_id);
+  CREATE INDEX IF NOT EXISTS idx_events_calendar_start ON events(calendar_id, start_at);
+  CREATE INDEX IF NOT EXISTS idx_events_provider ON events(provider_event_id);
+  CREATE INDEX IF NOT EXISTS idx_events_master ON events(recurring_event_id);
 
-  CREATE TABLE event_people (
+  CREATE TABLE IF NOT EXISTS event_people (
     event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
     PRIMARY KEY (event_id, person_id)
   );
 
-  CREATE TABLE sync_outbox (
+  CREATE TABLE IF NOT EXISTS sync_outbox (
     id TEXT PRIMARY KEY,
     entity TEXT NOT NULL DEFAULT 'event',
     entity_id TEXT NOT NULL,
@@ -94,7 +95,7 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
 
-  CREATE TABLE chores (
+  CREATE TABLE IF NOT EXISTS chores (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     icon TEXT,
@@ -109,7 +110,7 @@ const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
 
-  CREATE TABLE chore_completions (
+  CREATE TABLE IF NOT EXISTS chore_completions (
     id TEXT PRIMARY KEY,
     chore_id TEXT NOT NULL REFERENCES chores(id),
     person_id TEXT NOT NULL REFERENCES people(id),
@@ -118,9 +119,9 @@ const MIGRATIONS: string[] = [
     stars_awarded INTEGER NOT NULL DEFAULT 0,
     UNIQUE (chore_id, due_date)
   );
-  CREATE INDEX idx_completions_chore_date ON chore_completions(chore_id, due_date);
+  CREATE INDEX IF NOT EXISTS idx_completions_chore_date ON chore_completions(chore_id, due_date);
 
-  CREATE TABLE star_ledger (
+  CREATE TABLE IF NOT EXISTS star_ledger (
     id TEXT PRIMARY KEY,
     person_id TEXT NOT NULL REFERENCES people(id),
     delta INTEGER NOT NULL,
@@ -129,7 +130,7 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
 
-  CREATE TABLE rewards (
+  CREATE TABLE IF NOT EXISTS rewards (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     icon TEXT,
@@ -139,7 +140,7 @@ const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
 
-  CREATE TABLE reward_redemptions (
+  CREATE TABLE IF NOT EXISTS reward_redemptions (
     id TEXT PRIMARY KEY,
     reward_id TEXT NOT NULL REFERENCES rewards(id),
     person_id TEXT NOT NULL REFERENCES people(id),
@@ -148,7 +149,7 @@ const MIGRATIONS: string[] = [
     status TEXT NOT NULL DEFAULT 'pending'
   );
 
-  CREATE TABLE lists (
+  CREATE TABLE IF NOT EXISTS lists (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     color TEXT NOT NULL DEFAULT '#0091FF',
@@ -157,7 +158,7 @@ const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
 
-  CREATE TABLE list_items (
+  CREATE TABLE IF NOT EXISTS list_items (
     id TEXT PRIMARY KEY,
     list_id TEXT NOT NULL REFERENCES lists(id),
     text TEXT NOT NULL,
@@ -168,7 +169,7 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
 
-  CREATE TABLE recipes (
+  CREATE TABLE IF NOT EXISTS recipes (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     ingredients TEXT,
@@ -179,7 +180,7 @@ const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
 
-  CREATE TABLE meal_slots (
+  CREATE TABLE IF NOT EXISTS meal_slots (
     id TEXT PRIMARY KEY,
     date TEXT NOT NULL,
     slot TEXT NOT NULL,
@@ -187,9 +188,9 @@ const MIGRATIONS: string[] = [
     free_text TEXT,
     UNIQUE (date, slot)
   );
-  CREATE INDEX idx_meal_slots_date ON meal_slots(date);
+  CREATE INDEX IF NOT EXISTS idx_meal_slots_date ON meal_slots(date);
 
-  CREATE TABLE settings (
+  CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
@@ -203,5 +204,16 @@ export function runMigrations(sqlite: DatabaseType.Database): void {
       sqlite.exec(MIGRATIONS[v])
       sqlite.pragma(`user_version = ${v + 1}`)
     })()
+  }
+}
+
+export async function runLibsqlMigrations(client: LibsqlClient): Promise<void> {
+  const res = await client.execute('PRAGMA user_version')
+  const row = res.rows[0] as unknown as Record<string, number> | undefined
+  const current = (row ? Object.values(row)[0] : 0) || 0
+
+  for (let v = current; v < MIGRATIONS.length; v++) {
+    await client.executeMultiple(MIGRATIONS[v])
+    await client.execute(`PRAGMA user_version = ${v + 1}`)
   }
 }

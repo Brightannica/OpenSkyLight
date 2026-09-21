@@ -19,17 +19,20 @@ function toDto(row: typeof calendars.$inferSelect): CalendarDto {
 }
 
 export function createCalendarService(db: AppDb) {
-  function list(): CalendarDto[] {
-    return db
+  function list(): CalendarDto[] | Promise<CalendarDto[]> {
+    const res = db
       .select()
       .from(calendars)
       .where(isNull(calendars.deletedAt))
       .orderBy(asc(calendars.name))
       .all()
-      .map(toDto)
+    if (res instanceof Promise) {
+      return res.then((rows: any[]) => rows.map(toDto))
+    }
+    return res.map(toDto)
   }
 
-  function create(input: CalendarCreateInput): CalendarDto {
+  function create(input: CalendarCreateInput): CalendarDto | Promise<CalendarDto> {
     const row: typeof calendars.$inferInsert = {
       id: uuidv7(),
       provider: 'local',
@@ -38,33 +41,55 @@ export function createCalendarService(db: AppDb) {
       readOnly: false,
       visible: true
     }
-    db.insert(calendars).values(row).run()
+    const res = db.insert(calendars).values(row).run()
+    if (res instanceof Promise) {
+      return res.then(() =>
+        db.select().from(calendars).where(eq(calendars.id, row.id!)).all()
+      ).then(([created]: any[]) => toDto(created))
+    }
     const [created] = db.select().from(calendars).where(eq(calendars.id, row.id!)).all()
     return toDto(created)
   }
 
-  function update(input: CalendarUpdateInput): CalendarDto {
+  function update(input: CalendarUpdateInput): CalendarDto | Promise<CalendarDto> {
     const patch: Partial<typeof calendars.$inferInsert> = {}
     if (input.name !== undefined) patch.name = input.name
     if (input.color !== undefined) patch.color = input.color
     if (input.visible !== undefined) patch.visible = input.visible
-    const result = db
+    const res = db
       .update(calendars)
       .set(patch)
       .where(and(eq(calendars.id, input.id), isNull(calendars.deletedAt)))
       .run()
-    if (result.changes === 0) throw notFound('Calendar')
+    if (res instanceof Promise) {
+      return res.then(() =>
+        db.select().from(calendars).where(eq(calendars.id, input.id)).all()
+      ).then(([row]: any[]) => {
+        if (!row) throw notFound('Calendar')
+        return toDto(row)
+      })
+    }
+    if ((res as any).changes === 0) throw notFound('Calendar')
     const [row] = db.select().from(calendars).where(eq(calendars.id, input.id)).all()
     return toDto(row)
   }
 
-  function remove(id: string): void {
-    const visible = db
+  function remove(id: string): void | Promise<void> {
+    const visibleRes = db
       .select()
       .from(calendars)
       .where(and(isNull(calendars.deletedAt)))
       .all()
-    if (visible.length <= 1) throw invalid('Cannot delete the last calendar')
+    if (visibleRes instanceof Promise) {
+      return visibleRes.then((visible: any[]) => {
+        if (visible.length <= 1) throw invalid('Cannot delete the last calendar')
+        const now = isoUtc(DateTime.utc())
+        return db.update(calendars).set({ deletedAt: now }).where(and(eq(calendars.id, id), isNull(calendars.deletedAt))).then(() => {
+          return db.update(events).set({ deletedAt: now }).where(and(eq(events.calendarId, id), isNull(events.deletedAt)))
+        }).then(() => {})
+      })
+    }
+    if (visibleRes.length <= 1) throw invalid('Cannot delete the last calendar')
     const now = isoUtc(DateTime.utc())
     db.transaction((tx) => {
       const result = tx

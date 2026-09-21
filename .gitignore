@@ -8,3 +8,6 @@ Thumbs.db
 *.log
 .vite/
 coverage/
+*.db
+*.db-shm
+*.db-wal
