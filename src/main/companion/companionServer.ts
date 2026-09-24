@@ -218,8 +218,8 @@ export function createCompanionServer(deps: CompanionServerDeps) {
   }
 
   /** Reconcile the server with settings — called at boot and on every settings:set. */
-  function applySettings(): void {
-    const { enabled, port } = deps.settings.getAll().companion
+  async function applySettings(): Promise<void> {
+    const { enabled, port } = (await deps.settings.getAll()).companion
     if (!enabled) {
       stop()
       return
@@ -229,8 +229,8 @@ export function createCompanionServer(deps: CompanionServerDeps) {
     start(port)
   }
 
-  function getStatus(): { running: boolean; port: number; urls: string[]; pairedCount: number; lastError: string | null } {
-    const { port } = deps.settings.getAll().companion
+  async function getStatus(): Promise<{ running: boolean; port: number; urls: string[]; pairedCount: number; lastError: string | null }> {
+    const { port } = (await deps.settings.getAll()).companion
     const running = server !== null && boundPort !== null
     return {
       running,
@@ -242,8 +242,8 @@ export function createCompanionServer(deps: CompanionServerDeps) {
   }
 
   /** Mint a pairing URL — token rides in the fragment so it never reaches server logs. */
-  function issueToken(): { url: string } {
-    const { port } = deps.settings.getAll().companion
+  async function issueToken(): Promise<{ url: string }> {
+    const { port } = (await deps.settings.getAll()).companion
     const token = deps.tokens.issue()
     const [best] = pickLanAddresses()
     return { url: `http://${best ?? 'localhost'}:${boundPort ?? port}/#t=${token}` }
