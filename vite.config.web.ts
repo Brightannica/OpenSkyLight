@@ -13,7 +13,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: resolve(__dirname, 'dist/web'),
+    outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true
   },
   server: {
