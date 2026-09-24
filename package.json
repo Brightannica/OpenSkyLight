@@ -10,7 +10,7 @@
     "dev": "electron-vite dev",
     "dev:windowed": "electron-vite dev -- --windowed",
     "dev:companion": "vite --config companion.vite.config.ts",
-    "build": "electron-vite build && npm run build:companion",
+    "build": "electron-vite build && npm run build:companion && npm run build:web",
     "build:web": "vite build --config vite.config.web.ts && vite build --config server.vite.config.ts",
     "start:web": "START_WEB_SERVER=1 node dist/server/server.js",
     "build:companion": "vite build --config companion.vite.config.ts",
