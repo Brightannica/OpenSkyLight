@@ -3,7 +3,7 @@
   "name": "openskylight",
   "compatibility_date": "2026-09-21",
   "build": {
-    "command": "npm run build:cloudflare"
+    "command": "npm run build:web"
   },
   "assets": {
     "directory": "dist",
