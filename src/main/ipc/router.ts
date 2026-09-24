@@ -305,13 +305,13 @@ export function buildChannelTable(services: Services): ChannelTable {
   handle('companion:issueToken', null, () => services.companion.issueToken())
   handle('companion:unpairAll', null, () => services.companion.unpairAll())
 
-  handle('auth:getStatus', null, () => ({
-    pinSet: services.auth.pinSet(),
-    unlocked: services.auth.isUnlocked()
+  handle('auth:getStatus', null, async () => ({
+    pinSet: await services.auth.pinSet(),
+    unlocked: await services.auth.isUnlocked()
   }))
-  handle('auth:verifyPin', s.pinVerifySchema, (req) => ({ valid: services.auth.verifyPin(req.pin) }))
-  handle('auth:setPin', s.pinSetSchema, (req) => services.auth.setPin(req.pin))
-  handle('auth:lock', null, () => services.auth.lock())
+  handle('auth:verifyPin', s.pinVerifySchema, async (req) => ({ valid: await services.auth.verifyPin(req.pin) }))
+  handle('auth:setPin', s.pinSetSchema, async (req) => await services.auth.setPin(req.pin))
+  handle('auth:lock', null, async () => await services.auth.lock())
 
   return table
 }

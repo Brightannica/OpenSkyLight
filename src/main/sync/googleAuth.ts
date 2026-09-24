@@ -36,8 +36,8 @@ export function createGoogleAuth(db: AppDb, settings: SettingsService) {
   let connectInFlight = false
 
   function getCredentials(): { clientId: string; clientSecret: string } | null {
-    const clientId = settings.getRaw(KEY_CLIENT_ID)
-    const secretB64 = settings.getRaw(KEY_CLIENT_SECRET)
+    const clientId = settings.getRawSync(KEY_CLIENT_ID)
+    const secretB64 = settings.getRawSync(KEY_CLIENT_SECRET)
     if (!clientId || !secretB64) return null
     try {
       return { clientId, clientSecret: decryptSecret(Buffer.from(secretB64, 'base64')) }
@@ -47,8 +47,8 @@ export function createGoogleAuth(db: AppDb, settings: SettingsService) {
   }
 
   function setCredentials(clientId: string, clientSecret: string): void {
-    settings.setRaw(KEY_CLIENT_ID, clientId.trim())
-    settings.setRaw(KEY_CLIENT_SECRET, encryptSecret(clientSecret.trim()).toString('base64'))
+    settings.setRawSync(KEY_CLIENT_ID, clientId.trim())
+    settings.setRawSync(KEY_CLIENT_SECRET, encryptSecret(clientSecret.trim()).toString('base64'))
   }
 
   function isConfigured(): boolean {

@@ -72,7 +72,7 @@ export function createCameraService(settings: SettingsService) {
 
   function loadCameras(): StoredCamera[] {
     try {
-      const raw = settings.getRaw(KEY_CAMERAS)
+      const raw = settings.getRawSync(KEY_CAMERAS)
       const parsed = raw ? (JSON.parse(raw) as StoredCamera[]) : []
       return Array.isArray(parsed) ? parsed : []
     } catch {
@@ -81,7 +81,7 @@ export function createCameraService(settings: SettingsService) {
   }
 
   function saveCameras(cameras: StoredCamera[]): void {
-    settings.setRaw(KEY_CAMERAS, JSON.stringify(cameras))
+    settings.setRawSync(KEY_CAMERAS, JSON.stringify(cameras))
   }
 
   function list(): CameraDto[] {

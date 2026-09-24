@@ -21,7 +21,7 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
   /** Photos are served through osl-photo:// so the sandboxed renderer never touches the filesystem. */
   function registerPhotoProtocol(): void {
     protocol.handle('osl-photo', (request) => {
-      const folder = settings.getAll().screensaver.folder
+      const folder = settings.getAllSync().screensaver.folder
       if (!folder) return new Response('no folder', { status: 404 })
       const url = new URL(request.url)
       const name = decodeURIComponent(url.pathname.replace(/^\//, ''))
@@ -48,7 +48,7 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
   }
 
   function listPhotos(): string[] {
-    const folder = settings.getAll().screensaver.folder
+    const folder = settings.getAllSync().screensaver.folder
     if (!folder) return []
     try {
       return readdirSync(folder)
@@ -65,9 +65,9 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
       title: 'Choose a photo folder',
       properties: ['openDirectory']
     })
-    if (result.canceled || result.filePaths.length === 0) return { folder: settings.getAll().screensaver.folder }
+    if (result.canceled || result.filePaths.length === 0) return { folder: settings.getAllSync().screensaver.folder }
     const folder = result.filePaths[0]
-    settings.set({ screensaver: { ...settings.getAll().screensaver, folder } })
+    settings.set({ screensaver: { ...settings.getAllSync().screensaver, folder } })
     return { folder }
   }
 
@@ -101,13 +101,13 @@ export function createKiosk(deps: { settings: SettingsService; broadcast: (ch: s
     blockerId = powerSaveBlocker.start('prevent-display-sleep')
 
     idleTimer = setInterval(() => {
-      const s = settings.getAll().screensaver
+      const s = settings.getAllSync().screensaver
       const idleSeconds = powerMonitor.getSystemIdleTime()
       setScreensaver(s.folder !== null && idleSeconds >= s.idleMinutes * 60)
     }, IDLE_POLL_MS)
 
     sleepTimer = setInterval(() => {
-      const s = settings.getAll().sleep
+      const s = settings.getAllSync().sleep
       if (!s.enabled) {
         setSleeping(false)
         return
